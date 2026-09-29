@@ -1,0 +1,6 @@
+{
+  "name": "Office Management System",
+  "description": "Enterprise office operations platform with role-based access for Admin and Employees, featuring client master records, weekly task boards, and daily attendance logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,64 @@
+{
+  "users": [
+    {
+      "id": "usr_admin_01",
+      "name": "Administrator",
+      "email": "admin@company.com",
+      "username": "admin",
+      "password": "admin123",
+      "role": "admin",
+      "phone": "+91 98765 00001",
+      "department": "Executive Management",
+      "joiningDate": "2026-01-01",
+      "status": "Active",
+      "avatarUrl": "/src/assets/images/avatar_admin_1790595482398.jpg"
+    },
+    {
+      "name": "keerthivasan",
+      "email": "keerthivasanclg@gmail.com",
+      "phone": "+91 8015660521",
+      "username": "keerthi",
+      "password": "employee123",
+      "role": "employee",
+      "department": "Digital Marketing & Content",
+      "joiningDate": "2026-09-28",
+      "status": "Active",
+      "id": "usr_mumayg8a_abvs"
+    }
+  ],
+  "clients": [
+    {
+      "clientName": "keerti",
+      "packageTier": "Premium",
+      "monthlyFee": 25000,
+      "contractStart": "2026-09-01",
+      "renewalDate": "2027-08-31",
+      "namedApprover": "fbvofrgreg",
+      "billingContact": "bgher@fj",
+      "deliveryLead": "Arun Kumar",
+      "baselineMetrics": "Website / Leads / Social",
+      "seuLoad": "40 hrs",
+      "paymentStatus": "Paid",
+      "status": "Active",
+      "notes": "",
+      "id": "cli_mumawscz_prjv",
+      "createdAt": "2026-09-29T06:34:21.971Z"
+    }
+  ],
+  "tasks": [],
+  "attendance": [
+    {
+      "id": "att_20260928_abvs",
+      "employeeId": "usr_mumayg8a_abvs",
+      "employeeName": "keerthivasan",
+      "employeeEmail": "keerthivasanclg@gmail.com",
+      "department": "Digital Marketing & Content",
+      "date": "2026-09-28",
+      "checkIn": "02:36 PM",
+      "checkOut": "03:53 PM",
+      "status": "Present",
+      "note": "Present at workstation · Shift completed",
+      "hoursWorked": "1h 17m"
+    }
+  ]
+}
