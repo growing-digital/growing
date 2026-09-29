@@ -310,7 +310,7 @@ export const Header: React.FC<HeaderProps> = ({
           ===================================================== */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Employee -> Admin Switch */}
-        {!isAdmin && (
+        {/* {!isAdmin && (
           <button
             type="button"
             onClick={() => switchUser('admin@company.com')}
@@ -323,7 +323,7 @@ export const Header: React.FC<HeaderProps> = ({
               Switch to Admin
             </span>
           </button>
-        )}
+        )} */}
 
         {/* =====================================================
             USER PROFILE

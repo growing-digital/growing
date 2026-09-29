@@ -71,7 +71,7 @@ export const EmployeesView: React.FC = () => {
     setFormData({
       name: '',
       email: '',
-      phone: '+91 9',
+      phone: '+91 ',
       username: '',
       password: 'employee123',
       role: 'employee',
