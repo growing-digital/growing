@@ -155,7 +155,7 @@ export const LoginPage: React.FC = () => {
           </form>
 
           {/* Initial Admin Access Helper */}
-          <div className="mt-8 pt-6 border-t border-slate-800/80 text-center">
+          {/* <div className="mt-8 pt-6 border-t border-slate-800/80 text-center">
             <div className="text-[11px] text-slate-400 mb-2">
               Default Administrator Credentials:
             </div>
@@ -170,7 +170,7 @@ export const LoginPage: React.FC = () => {
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
               <span>admin@company.com · admin123</span>
             </button>
-          </div>
+          </div> */}
         </div>
       </main>
 
