@@ -1,8 +1,10 @@
-import { User, Client, Task, AttendanceRecord, DashboardStats } from '../types.ts';
+import type { User, Client, Task, AttendanceRecord, DashboardStats } from '../types.ts';
 import { INITIAL_USERS, INITIAL_CLIENTS, INITIAL_TASKS, INITIAL_ATTENDANCE } from '../data/seedData.ts';
 
 const TOKEN_KEY = 'oms_auth_token';
 const USER_KEY = 'oms_auth_user';
+
+const API_BASE_URL = 'https://office-management-api-qyed.onrender.com';
 
 export const storage = {
   getToken(): string | null {
@@ -41,7 +43,7 @@ async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T>
   }
 
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({ error: res.statusText }));
       if (res.status === 401) {
