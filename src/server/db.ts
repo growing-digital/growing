@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { User, Client, Task, AttendanceRecord, DashboardStats } from '../types.ts';
+import type { User, Client, Task, AttendanceRecord, DashboardStats } from '../types.ts';
 import { INITIAL_USERS, INITIAL_CLIENTS, INITIAL_TASKS, INITIAL_ATTENDANCE } from '../data/seedData.ts';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');

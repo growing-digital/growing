@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.ts';
 import { db } from '../db.ts';
 import { isMongoConnected } from '../db/mongodb.ts';
-import { User as IUserType } from '../../types.ts';
+import type { User as IUserType } from '../../types.ts';
 
 export interface AuthenticatedRequest extends Request {
   user?: IUserType;

@@ -1,4 +1,4 @@
-import { User, Client, Task, AttendanceRecord } from '../types.ts';
+import type { User, Client, Task, AttendanceRecord } from '../types.ts';
 
 export const INITIAL_USERS: User[] = [
   {

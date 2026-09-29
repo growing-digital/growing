@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User.ts';
 import { db } from '../db.ts';
 import { isMongoConnected } from '../db/mongodb.ts';
-import { AuthenticatedRequest } from '../middleware/auth.ts';
+import type { AuthenticatedRequest } from '../middleware/auth.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'oms_default_jwt_secret_2026';
 
