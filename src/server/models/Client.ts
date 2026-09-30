@@ -49,21 +49,21 @@ const ClientSchema = new Schema<IClient>(
       required: true,
     },
     namedApprover: {
-      type: String,
-      required: [true, 'Named Approver is required'],
-      trim: true,
-    },
+  type: String,
+  trim: true,
+  default: '',
+},
     billingContact: {
       type: String,
       required: [true, 'Billing Contact Email is required'],
       lowercase: true,
       trim: true,
     },
-    deliveryLead: {
-      type: String,
-      required: [true, 'Delivery Lead is required'],
-      trim: true,
-    },
+   deliveryLead: {
+  type: String,
+  trim: true,
+  default: '',
+},
     baselineMetrics: {
       type: String,
       default: 'Website / Leads / Social',
