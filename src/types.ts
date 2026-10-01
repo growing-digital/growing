@@ -57,7 +57,11 @@ export interface Task {
   completionNotes?: string;
 }
 
-export type AttendanceStatus = 'Present' | 'Late' | 'Absent' | 'On Leave';
+export type AttendanceStatus =
+  | 'Present'
+  | 'Late'
+  | 'Absent'
+  | 'On Leave';
 
 export interface AttendanceRecord {
   id: string;
@@ -69,10 +73,9 @@ export interface AttendanceRecord {
   checkIn: string | null; // e.g. "09:10 AM"
   checkOut: string | null; // e.g. "06:05 PM"
   status: AttendanceStatus;
-  note?: string;
-  hoursWorked?: string; // e.g. "8h 55m"
+  note: string;
+  hoursWorked: string; // e.g. "8h 55m"
 }
-
 export interface AuthSession {
   token: string;
   user: User;

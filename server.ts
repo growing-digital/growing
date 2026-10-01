@@ -3,27 +3,45 @@ import type { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
-import { connectMongoDB } from './src/server/db/mongodb.ts';
+
+import { connectMongoDB, isMongoConnected } from './src/server/db/mongodb.ts';
 import { apiRouter } from './src/server/routes/api.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+const PORT = process.env.PORT
+  ? parseInt(process.env.PORT, 10)
+  : 3000;
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // ----------------------------------------------------
-// CORS - Allow GitHub Pages frontend to call Render API
+// CORS
 // ----------------------------------------------------
-const ALLOWED_ORIGIN = 'https://keerthivasanclg-design.github.io';
+const ALLOWED_ORIGINS = new Set([
+  'https://keerthivasanclg-design.github.io',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]);
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  const origin = req.headers.origin;
+
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+
   res.header('Vary', 'Origin');
+
   res.header(
     'Access-Control-Allow-Methods',
     'GET,POST,PUT,PATCH,DELETE,OPTIONS'
   );
+
   res.header(
     'Access-Control-Allow-Headers',
     'Content-Type, Authorization'
@@ -36,40 +54,88 @@ app.use((req, res, next) => {
   next();
 });
 
+// ----------------------------------------------------
+// BODY PARSING
+// ----------------------------------------------------
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Mount modular API routes
+// ----------------------------------------------------
+// API ROUTES
+// Final API URL:
+// https://office-management-api-qyed.onrender.com/api/...
+// ----------------------------------------------------
 app.use('/api', apiRouter);
 
 // ----------------------------------------------------
-// VITE DEV SERVER / STATIC ASSETS
+// SERVER STARTUP
 // ----------------------------------------------------
 async function startServer() {
-  await connectMongoDB();
+  const mongoConnected = await connectMongoDB();
 
-  if (process.env.NODE_ENV !== 'production') {
+  console.log(
+    `MongoDB status: ${
+      mongoConnected && isMongoConnected()
+        ? 'CONNECTED'
+        : 'NOT CONNECTED'
+    }`
+  );
+
+  // --------------------------------------------------
+  // PRODUCTION
+  // --------------------------------------------------
+  if (IS_PRODUCTION) {
+    if (!mongoConnected || !isMongoConnected()) {
+      throw new Error(
+        'MongoDB connection is required in production. Check MONGODB_URI and MongoDB Atlas Network Access.'
+      );
+    }
+
+    const distPath = path.resolve(__dirname, 'dist');
+
+    app.use(express.static(distPath));
+
+    // SPA fallback
+    app.use((_req: Request, res: Response) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  // --------------------------------------------------
+  // DEVELOPMENT
+  // --------------------------------------------------
+  if (!IS_PRODUCTION) {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+      },
       appType: 'spa',
     });
 
     app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
-    });
   }
 
+  // --------------------------------------------------
+  // START LISTENING
+  // --------------------------------------------------
   app.listen(PORT, '0.0.0.0', () => {
     console.log(
-      `Office Management System backend running on http://0.0.0.0:${PORT}`
+      `Office Management System server running on http://0.0.0.0:${PORT}`
     );
+
+    if (IS_PRODUCTION) {
+      console.log('Environment: PRODUCTION');
+      console.log('MongoDB: CONNECTED');
+    } else {
+      console.log('Environment: DEVELOPMENT');
+    }
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
+// ----------------------------------------------------
+// STARTUP ERROR HANDLING
+// ----------------------------------------------------
+startServer().catch((error) => {
+  console.error('Failed to start server:', error);
   process.exit(1);
 });
