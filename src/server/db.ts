@@ -31,6 +31,13 @@ const DB_FILE = path.join(
 );
 
 // ============================================================
+// OFFICE HOURS
+// ============================================================
+
+const OFFICE_START_MINUTES = 10 * 60 + 30; // 10:00 AM
+const OFFICE_END_MINUTES = 17 * 60;   // 5:00 PM
+
+// ============================================================
 // DATABASE SCHEMA
 // ============================================================
 
@@ -618,40 +625,15 @@ class Database {
       AttendanceRecord['status'] =
       'Present';
 
-    const normalizedTime =
-      timeStr
-        .trim()
-        .toUpperCase();
+    const checkInMinutes =
+      parseTimeToMinutes(timeStr);
 
     if (
-      normalizedTime.includes('AM')
+      checkInMinutes !== null &&
+      checkInMinutes >
+        OFFICE_START_MINUTES
     ) {
-      const clean =
-        normalizedTime.replace(
-          ' AM',
-          ''
-        );
-
-      const [
-        hourText,
-        minuteText,
-      ] = clean.split(':');
-
-      const hour =
-        Number(hourText);
-
-      const minute =
-        Number(minuteText);
-
-      if (
-        hour > 9 ||
-        (
-          hour === 9 &&
-          minute > 15
-        )
-      ) {
-        status = 'Late';
-      }
+      status = 'Late';
     }
 
     // --------------------------------------------------------
@@ -1023,6 +1005,71 @@ class Database {
 }
 
 // ============================================================
+// TIME PARSER
+// ============================================================
+
+function parseTimeToMinutes(
+  value: string
+): number | null {
+  try {
+    const normalized =
+      value
+        .trim()
+        .toUpperCase();
+
+    const match =
+      normalized.match(
+        /^(\d{1,2}):(\d{2})\s*(AM|PM)$/
+      );
+
+    if (!match) {
+      return null;
+    }
+
+    let hour =
+      Number(match[1]);
+
+    const minute =
+      Number(match[2]);
+
+    const period =
+      match[3];
+
+    if (
+      Number.isNaN(hour) ||
+      Number.isNaN(minute) ||
+      hour < 1 ||
+      hour > 12 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      return null;
+    }
+
+    if (
+      period === 'PM' &&
+      hour !== 12
+    ) {
+      hour += 12;
+    }
+
+    if (
+      period === 'AM' &&
+      hour === 12
+    ) {
+      hour = 0;
+    }
+
+    return (
+      hour * 60 +
+      minute
+    );
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
 // WORK DURATION
 // ============================================================
 
@@ -1031,74 +1078,22 @@ function calculateWorkDuration(
   checkOut: string
 ): string {
   try {
-    const parseTime =
-      (value: string): number => {
-        const normalized =
-          value
-            .trim()
-            .toUpperCase();
-
-        const isPM =
-          normalized.includes(
-            'PM'
-          );
-
-        const isAM =
-          normalized.includes(
-            'AM'
-          );
-
-        const clean =
-          normalized.replace(
-            /(AM|PM|\s)/g,
-            ''
-          );
-
-        const [
-          hourText,
-          minuteText,
-        ] = clean.split(':');
-
-        let hour =
-          Number(hourText);
-
-        const minute =
-          Number(minuteText);
-
-        if (
-          Number.isNaN(hour) ||
-          Number.isNaN(minute)
-        ) {
-          throw new Error(
-            'Invalid time'
-          );
-        }
-
-        if (
-          isPM &&
-          hour !== 12
-        ) {
-          hour += 12;
-        }
-
-        if (
-          isAM &&
-          hour === 12
-        ) {
-          hour = 0;
-        }
-
-        return (
-          hour * 60 +
-          minute
-        );
-      };
-
     const start =
-      parseTime(checkIn);
+      parseTimeToMinutes(
+        checkIn
+      );
 
     const end =
-      parseTime(checkOut);
+      parseTimeToMinutes(
+        checkOut
+      );
+
+    if (
+      start === null ||
+      end === null
+    ) {
+      return '0h 00m';
+    }
 
     let difference =
       end - start;
