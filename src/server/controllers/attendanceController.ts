@@ -32,32 +32,41 @@ const APPLICATION_TIME_ZONE = 'Asia/Kolkata';
 // 2026-10-02
 // ============================================================
 
-function getServerDate(): string {
+function getServerDateTime(): {
+  date: string;
+  time: string;
+} {
+  /**
+   * IMPORTANT:
+   * This is the attendance authority.
+   * It uses the backend/server clock and explicitly formats it
+   * in India Standard Time. The employee's device clock is never used.
+   */
   const now = new Date();
 
-  const parts = new Intl.DateTimeFormat('en-GB', {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: APPLICATION_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
   }).formatToParts(now);
 
-  const year =
+  const getPart = (type: string): string =>
     parts.find(
-      (part) => part.type === 'year'
+      (part) => part.type === type
     )?.value || '';
 
-  const month =
-    parts.find(
-      (part) => part.type === 'month'
-    )?.value || '';
+  return {
+    date: `${getPart('year')}-${getPart('month')}-${getPart('day')}`,
+    time: `${getPart('hour')}:${getPart('minute')} ${getPart('dayPeriod')}`,
+  };
+}
 
-  const day =
-    parts.find(
-      (part) => part.type === 'day'
-    )?.value || '';
-
-  return `${year}-${month}-${day}`;
+function getServerDate(): string {
+  return getServerDateTime().date;
 }
 
 // ============================================================
@@ -309,8 +318,16 @@ export async function getTodayAttendance(
       ? req.query.date.trim()
       : '';
 
+  const isAdmin =
+    req.user?.role === 'admin';
+
+  /**
+   * SECURITY:
+   * Admins may request a selected historical date.
+   * Employees can only request the backend's actual current date.
+   */
   const today =
-    requestedDate
+    isAdmin && requestedDate
       ? requestedDate
       : getServerDate();
 
@@ -320,9 +337,6 @@ export async function getTodayAttendance(
         'Invalid attendance date. Expected YYYY-MM-DD.',
     });
   }
-
-  const isAdmin =
-    req.user?.role === 'admin';
 
   try {
     if (isMongoConnected()) {
@@ -569,7 +583,7 @@ export async function getAttendance(
 // CHECK IN
 // ============================================================
 //
-// Creates or updates exactly one record for:
+// Creates exactly one record for:
 //
 // employeeId + date
 //
@@ -588,44 +602,37 @@ export async function checkIn(
   req: AuthenticatedRequest,
   res: Response
 ) {
-  const {
-    date,
-    time,
-    note,
-  } =
-    req.body || {};
+  const user = req.user;
 
-  const attendanceDate =
-    typeof date === 'string' &&
-    date.trim()
-      ? date.trim()
-      : getServerDate();
-
-  if (
-    !isValidDateKey(
-      attendanceDate
-    )
-  ) {
-    return res.status(400).json({
+  if (!user?.id) {
+    return res.status(401).json({
       error:
-        'Invalid attendance date. Expected YYYY-MM-DD.',
+        'Authenticated employee is missing.',
     });
   }
 
+  /**
+   * SECURITY:
+   * Ignore any date/time values sent by the browser.
+   * Generate both values from ONE server-side instant so the
+   * attendance date and time can never come from the mobile clock.
+   */
+  const serverDateTime =
+    getServerDateTime();
+
+  const attendanceDate =
+    serverDateTime.date;
+
   const checkInTime =
-    typeof time === 'string' &&
-    time.trim()
-      ? time.trim()
-      : new Date().toLocaleTimeString(
-          'en-US',
-          {
-            timeZone:
-              APPLICATION_TIME_ZONE,
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }
-        );
+    serverDateTime.time;
+
+  const body =
+    req.body || {};
+
+  const note =
+    typeof body.note === 'string'
+      ? body.note.trim()
+      : '';
 
   const status =
     calculateAttendanceStatus(
@@ -634,71 +641,55 @@ export async function checkIn(
 
   try {
     if (isMongoConnected()) {
-      const user =
-        req.user;
+      // ------------------------------------------------------
+      // ONE CHECK-IN PER EMPLOYEE PER SERVER DATE
+      // ------------------------------------------------------
 
-      if (!user?.id) {
-        return res.status(401).json({
+      const existing =
+        await Attendance.findOne({
+          employeeId: user.id,
+          date: attendanceDate,
+        });
+
+      if (existing) {
+        return res.status(409).json({
           error:
-            'Authenticated employee is missing.',
+            existing.checkOut
+              ? 'You have already completed attendance for today.'
+              : 'You have already checked in for today.',
         });
       }
-
-      // ------------------------------------------------------
-      // ONE RECORD PER EMPLOYEE PER DAY
-      // ------------------------------------------------------
 
       const record =
-        await Attendance.findOneAndUpdate(
-          {
-            employeeId:
-              user.id,
-            date:
-              attendanceDate,
-          },
-          {
-            $setOnInsert: {
-              employeeId:
-                user.id,
-              employeeName:
-                user.name,
-              employeeEmail:
-                user.email,
-              department:
-                user.department,
-              date:
-                attendanceDate,
-              checkOut:
-                null,
-            },
+        await Attendance.create({
+          employeeId:
+            user.id,
 
-            $set: {
-              checkIn:
-                checkInTime,
-              status,
-              note:
-                typeof note ===
-                'string'
-                  ? note.trim()
-                  : '',
-              hoursWorked:
-                'Active',
-            },
-          },
-          {
-            upsert: true,
-            new: true,
-            runValidators:
-              true,
-          }
-        );
+          employeeName:
+            user.name,
 
-      if (!record) {
-        return res.status(500).json({
-          error:
-            'Unable to create attendance record.',
+          employeeEmail:
+            user.email,
+
+          department:
+            user.department,
+
+          date:
+            attendanceDate,
+
+          checkIn:
+            checkInTime,
+
+          checkOut:
+            null,
+
+          status,
+
+          note,
+
+          hoursWorked:
+            'Active',
         });
-      }
 
       return res.json(
         mapAttendanceRecord(
@@ -707,6 +698,19 @@ export async function checkIn(
       );
     }
   } catch (err: any) {
+    /**
+     * Unique employee/date indexes can also reject a race where
+     * two check-in requests arrive almost simultaneously.
+     */
+    if (
+      err?.code === 11000
+    ) {
+      return res.status(409).json({
+        error:
+          'You have already checked in for today.',
+      });
+    }
+
     console.warn(
       '[Attendance] Mongo checkIn error, using local fallback:',
       err?.message || err
@@ -720,13 +724,15 @@ export async function checkIn(
   try {
     const record =
       db.markCheckIn(
-        req.user!.id,
+        user.id,
         attendanceDate,
         checkInTime,
         note
       );
 
-    return res.json(record);
+    return res.json(
+      record
+    );
   } catch (err: any) {
     return res.status(400).json({
       error:
@@ -752,59 +758,43 @@ export async function checkOut(
   req: AuthenticatedRequest,
   res: Response
 ) {
-  const {
-    date,
-    time,
-    note,
-  } =
-    req.body || {};
+  const employeeId =
+    req.user?.id;
 
-  const attendanceDate =
-    typeof date === 'string' &&
-    date.trim()
-      ? date.trim()
-      : getServerDate();
-
-  if (
-    !isValidDateKey(
-      attendanceDate
-    )
-  ) {
-    return res.status(400).json({
+  if (!employeeId) {
+    return res.status(401).json({
       error:
-        'Invalid attendance date. Expected YYYY-MM-DD.',
+        'Authenticated employee is missing.',
     });
   }
 
+  /**
+   * SECURITY:
+   * Ignore any date/time values sent by the browser.
+   * The backend decides both the current attendance date and
+   * the exact checkout time from its own server clock.
+   */
+  const serverDateTime =
+    getServerDateTime();
+
+  const attendanceDate =
+    serverDateTime.date;
+
   const checkOutTime =
-    typeof time === 'string' &&
-    time.trim()
-      ? time.trim()
-      : new Date().toLocaleTimeString(
-          'en-US',
-          {
-            timeZone:
-              APPLICATION_TIME_ZONE,
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }
-        );
+    serverDateTime.time;
+
+  const body =
+    req.body || {};
+
+  const note =
+    typeof body.note === 'string'
+      ? body.note.trim()
+      : '';
 
   try {
     if (isMongoConnected()) {
-      const employeeId =
-        req.user?.id;
-
-      if (!employeeId) {
-        return res.status(401).json({
-          error:
-            'Authenticated employee is missing.',
-        });
-      }
-
       // ------------------------------------------------------
-      // FIND ONLY THIS EMPLOYEE + THIS DATE
+      // FIND ONLY THIS EMPLOYEE + SERVER DATE
       // ------------------------------------------------------
 
       const record =
@@ -817,7 +807,7 @@ export async function checkOut(
       if (!record) {
         return res.status(400).json({
           error:
-            'No attendance record exists for this date.',
+            'No attendance record exists for today.',
         });
       }
 
@@ -836,7 +826,7 @@ export async function checkOut(
       }
 
       // ------------------------------------------------------
-      // SAVE ACTUAL CHECKOUT
+      // SAVE SERVER-GENERATED CHECKOUT
       // ------------------------------------------------------
 
       record.checkOut =
@@ -852,15 +842,11 @@ export async function checkOut(
           checkOutTime
         );
 
-      if (
-        typeof note ===
-          'string' &&
-        note.trim()
-      ) {
+      if (note) {
         record.note =
           record.note
-            ? `${record.note} · ${note.trim()}`
-            : note.trim();
+            ? `${record.note} · ${note}`
+            : note;
       }
 
       await record.save();
@@ -885,13 +871,15 @@ export async function checkOut(
   try {
     const record =
       db.markCheckOut(
-        req.user!.id,
+        employeeId,
         attendanceDate,
         checkOutTime,
         note
       );
 
-    return res.json(record);
+    return res.json(
+      record
+    );
   } catch (err: any) {
     return res.status(400).json({
       error:
